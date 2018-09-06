@@ -106,7 +106,7 @@ void loadConfig(void) {
 	if (fd >= 0){
 		ksceIoRead(fd, buffer, 32);
 		ksceIoClose(fd);
-	}else sprintf(buffer, "0;n");
+	}else sprintf(buffer, "left=0,n;right=0,n");
 	sscanf(buffer, "left=%lu,%c;right=%lu,%c", &deadzoneLeft, &rescaleLeft, &deadzoneRight, &rescaleRight);
 	
 	if (rescaleLeft == 'y') patchFuncLeft = rescaleAnalogs;
