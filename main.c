@@ -13,7 +13,8 @@ static tai_hook_ref_t refs[HOOKS_NUM];
 
 static uint32_t deadzoneLeft, deadzoneRight;
 static char buffer[32];
-static char rescaleLeft, rescaleRight;
+static char rescaleLeft, rescaleRight, widePatch;
+static uint8_t apply_wide_patch = 0;
 
 static void (*patchFuncLeft)(uint8_t *x, uint8_t *y, int dead);
 static void (*patchFuncRight)(uint8_t *x, uint8_t *y, int dead);
@@ -106,13 +107,14 @@ void loadConfig(void) {
 	if (fd >= 0){
 		ksceIoRead(fd, buffer, 32);
 		ksceIoClose(fd);
-	}else sprintf(buffer, "left=0,n;right=0,n");
-	sscanf(buffer, "left=%lu,%c;right=%lu,%c", &deadzoneLeft, &rescaleLeft, &deadzoneRight, &rescaleRight);
+	}else sprintf(buffer, "left=0,n;right=0,n;y");
+	sscanf(buffer, "left=%lu,%c;right=%lu,%c;%c", &deadzoneLeft, &rescaleLeft, &deadzoneRight, &rescaleRight, &widePatch);
 	
 	if (rescaleLeft == 'y') patchFuncLeft = rescaleAnalogs;
 	else patchFuncLeft = deadzoneAnalogs;
 	if (rescaleRight == 'y') patchFuncRight = rescaleAnalogs;
 	else patchFuncRight = deadzoneAnalogs;
+	if (widePatch == 'y') apply_wide_patch = 1;
 	
 }
 
@@ -122,23 +124,19 @@ void hookFunctionExport(uint32_t nid, const void *func, const char *module) {
 	current_hook++;
 }
 
-void hookOffset(uint32_t offs, const void *func, SceUID id) {
-	hooks[current_hook] = taiHookFunctionOffsetForKernel(KERNEL_PID, &refs[current_hook], id, 0, offs, 1, func);
-}
-
 int ksceCtrlSetSamplingMode_patched(SceCtrlPadInputMode mode) {
 	if (mode == SCE_CTRL_MODE_ANALOG) mode = SCE_CTRL_MODE_ANALOG_WIDE;
-	return TAI_CONTINUE(int, refs[0], mode);
+	return TAI_CONTINUE(int, refs[2], mode);
 }
 
 int ksceCtrlPeekBufferPositive_patched(int port, SceCtrlData *ctrl, int count) {
-	int ret = TAI_CONTINUE(int, refs[1], port, ctrl, count);
+	int ret = TAI_CONTINUE(int, refs[0], port, ctrl, count);
 	patchData((uint8_t*)ctrl);
 	return ret;
 }
 
 int ksceCtrlReadBufferPositive_patched(int port, SceCtrlData *ctrl, int count) {
-	int ret = TAI_CONTINUE(int, refs[2], port, ctrl, count);
+	int ret = TAI_CONTINUE(int, refs[1], port, ctrl, count);
 	patchData((uint8_t*)ctrl);
 	return ret;
 }
@@ -150,9 +148,9 @@ int module_start(SceSize argc, const void *args) {
 	loadConfig();
 	
 	// Hooking functions
-	hookFunctionExport(0x80F5E418, ksceCtrlSetSamplingMode_patched, "SceCtrl");
 	hookFunctionExport(0xEA1D3A34, ksceCtrlPeekBufferPositive_patched, "SceCtrl");
 	hookFunctionExport(0x9B96A1AA, ksceCtrlReadBufferPositive_patched, "SceCtrl");
+	if (apply_wide_patch) hookFunctionExport(0x80F5E418, ksceCtrlSetSamplingMode_patched, "SceCtrl");
 	
 	return SCE_KERNEL_START_SUCCESS;
 }
