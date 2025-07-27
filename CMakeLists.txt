@@ -31,7 +31,7 @@ add_executable(AnalogsEnhancer
 target_link_libraries(AnalogsEnhancer
   taihenForKernel_stub
   SceLibKernel_stub
-  sceIofilemgrForDriver_stub
+  SceIofilemgrForDriver_stub
   k
   gcc
 )
