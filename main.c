@@ -36,7 +36,9 @@ void rescaleAnalogs(uint8_t *x, uint8_t *y, int dead) {
     float analogY = (float) *y - 127.0f;
     float deadZone = (float) dead;
     float magnitude = sqrt(analogX * analogX + analogY * analogY);
-    if (magnitude >= deadZone){
+
+    // use ">" instead of ">=", since when "magnitude == deadZone", later "float scalingFactor = a*0/b = 0.0f", sitck just centred like else{}
+    if (magnitude > deadZone){
         //adjust maximum magnitude
         float absAnalogX = fabs(analogX);
         float absAnalogY = fabs(analogY);
